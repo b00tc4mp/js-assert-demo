@@ -1,7 +1,15 @@
 <html>
 <head>
+<link href='http://fonts.googleapis.com/css?family=Amatic+SC' rel='stylesheet' type='text/css'>
+<style type="text/css">
+* {
+	font-family: 'Amatic SC', cursive;
+	font-size: 36px;
+}
+</style>
 </head>
 <body>
+</body>
 <script type="text/javascript">
 /**
  * Provides number utilities.
@@ -30,17 +38,21 @@ function Logger(name) {
 	if (this instanceof Logger) {
 		var debugEnabled = true;
 		var num = new Numbers();
+		var timestampEnabled;
 		function getTimeStamp() {
 			 var date = new Date();
 			 return date.getFullYear() + '-' + num.toStringDigits(date.getMonth(), 2) + '-' + num.toStringDigits(date.getDate(), 2) + ' ' + num.toStringDigits(date.getHours(), 2) + ':' + num.toStringDigits(date.getMinutes(), 2) + ':' + num.toStringDigits(date.getSeconds(), 2) + '.' + num.toStringDigits(date.getMilliseconds(), 3);
 		}
 		function infer(type, arguments) {
-			Array.prototype.unshift.call(arguments, (name? name + " " : "") + getTimeStamp() + " " + type);
+			Array.prototype.unshift.call(arguments, (name? name + " " : "") + type + (timestampEnabled? " (" + getTimeStamp() + ")" : ""));
 			return arguments;
 		}
-		this.setDebugEnabled = function(enabled) {
-			debugEnabled = enabled;
+		this.enableDebug = function(enable) {
+			debugEnabled = enable;
 		};
+		this.enableTiming = function(enable) {
+			timestampEnabled = enable;
+		}
 		this.log = function() {
 			console.log.apply(console, infer('LOG', arguments));
 		};
@@ -81,10 +93,14 @@ function AssertionError(message) {
 /**
  * Handles an assertion.
  */
-function AssertionHandler(success, fail) {
+function AssertionHandler(init, success, fail) {
 	if (this instanceof AssertionHandler) {
-		this.success = success;
-		this.fail = fail;
+		this.init = function() {
+			init.apply(this, arguments);
+		};
+		this.handle = function(condition, message) {
+			condition? success.call(this, message) : fail.call(this, message);
+		}
 	} else {
 		throw new Error("Cannot invoke AssertionHandler as a function.");
 	}
@@ -95,11 +111,14 @@ function AssertionHandler(success, fail) {
 CLIHandler.prototype = new AssertionHandler();
 function CLIHandler() {
 	if (this instanceof CLIHandler) {
-		var log = new Logger(name);
-		this.constructor(function(message) {
-			log.info("Condition \"" + message + "\" PASSED");
+		var log;
+		this.constructor(function(name) {
+			log = new Logger(name);
+			log.enableTiming(true);
 		}, function(message) {
-			log.warn("Condition \"" + message + "\" NOT PASSED");
+			log.info("condition \"" + message + "\" PASSED");
+		}, function(message) {
+			log.warn("condition \"" + message + "\" NOT PASSED");
 		});
 	} else {
 		throw new Error("Cannot invoke CLIHandler as a function.");
@@ -111,18 +130,22 @@ function CLIHandler() {
 UIHandler.prototype = new AssertionHandler();
 function UIHandler() {
 	if (this instanceof UIHandler) {
-		var asserter = new Asserter(name);
-		var resultsList = document.getElementById("results");
-  		if (!resultsList) {
-		    resultsList = document.createElement('ul');
-		    document.getElementsByTagName('body')[0].appendChild(resultsList);
-		    resultsList.setAttribute('id','results');
-  		}
-		this.constructor(function(message) {
+		var resultsList;
+		this.constructor(function(name) {
+			resultsList = document.getElementById("results");
+	  		if (!resultsList) {
+	  			var title = document.createElement("span");
+	  			title.appendChild(document.createTextNode(name))
+	  			document.getElementsByTagName("body")[0].appendChild(title);
+			    resultsList = document.createElement("ul");
+			    document.getElementsByTagName("body")[0].appendChild(resultsList);
+			    resultsList.setAttribute("id","results");
+	  		}
+		}, function(message) {
 			var li = document.createElement("li");
-			  li.style.color = "green";
-			  li.appendChild(document.createTextNode(message));
-			  resultsList.appendChild(li);
+			li.style.color = "green";
+			li.appendChild(document.createTextNode(message));
+			resultsList.appendChild(li);
 		}, function(message) {
 			var li = document.createElement("li");
 			li.style.color = "red";
@@ -136,7 +159,7 @@ function UIHandler() {
 /**
  * Asserts conditions and manage the results by means of handlers.
  */
-function Asserter() {
+function Asserter(name) {
 	if (this instanceof Asserter) {
 		var handlers = [];
 		this.assert = function(message, condition) {
@@ -144,20 +167,17 @@ function Asserter() {
 				try {
 					condition = condition();
 				} catch (error) {
-					throw new AssertionError("ERROR in condition \"" + message + "\". " + error.message);
+					throw new AssertionError((name? name + " " : "") + "ERROR condition \"" + message + "\" FAILED (" + error.message + ").");
 				}
 			}
 			for (var i = 0; i < handlers.length; i++) {
-				if (condition) {
-					handlers[i].success(message);
-				} else {
-					handlers[i].fail(message);
-				}
+				handlers[i].handle(condition, message);
 			}
 			return condition;
 		};
 		this.add = function(handler) {
 			if (handler instanceof AssertionHandler)  {
+				handler.init(name);
 				handlers.push(handler);
 			} else {
 				throw new AssertionError("Handler must be of the type AssertionHandler");
@@ -170,7 +190,7 @@ function Asserter() {
 /**
  * Testing code examples.
  */
-var test = new Asserter();
+var test = new Asserter("Test on dummies :)");
 // add a console output
 test.add(new CLIHandler());
 // add a UI (HTML) output
@@ -185,5 +205,5 @@ test.assert("true is equal to false", function() {
 test.assert("undefined array can push something", function() {
 	return undefined.push(0);
 });
-</script></body>
+</script>
 </html>
