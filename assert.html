@@ -171,7 +171,9 @@ function Asserter() {
  * Testing code examples.
  */
 var test = new Asserter();
+// add a console output
 test.add(new CLIHandler());
+// add a UI (HTML) output
 test.add(new UIHandler());
 // a passing condition
 test.assert("true is equal to true", true === true);
