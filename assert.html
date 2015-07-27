@@ -214,9 +214,11 @@ dummies.assert("undefined array can push something", function() {
 var numbers = new Asserter("Test on Numbers");
 numbers.add(new CLIHandler());
 numbers.add(new UIHandler());
-numbers.assert("retrieving 1 in 2 digits results in 01", Numbers.toStringDigits(1, 2) === "01");
-numbers.assert("retrieving 30 in 3 digits results in 030", Numbers.toStringDigits(30, 3) === "030");
-numbers.assert("retrieving 0123456789 in 5 digits results in 56789", Numbers.toStringDigits(0123456789, 5) === "56789");
-numbers.assert("retrieving 123 in 3 digits results in 123", Numbers.toStringDigits(123, 3) === "123");
+with (Numbers) {
+	numbers.assert("retrieving 1 in 2 digits results in 01", toStringDigits(1, 2) === "01");
+	numbers.assert("retrieving 30 in 3 digits results in 030", toStringDigits(30, 3) === "030");
+	numbers.assert("retrieving 0123456789 in 5 digits results in 56789", toStringDigits(0123456789, 5) === "56789");
+	numbers.assert("retrieving 123 in 3 digits results in 123", toStringDigits(123, 3) === "123");
+}
 </script>
 </html>
