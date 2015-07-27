@@ -12,36 +12,34 @@
 </body>
 <script type="text/javascript">
 /**
- * Provides number utilities.
+ * Numbers utility.
  */
- function Numbers() {
-	if (this instanceof Numbers) {
-		this.toStringDigits = function(value, digits) {
-			var val = value.toString();
-			if (val.length > digits) {
-				val = val.slice(val.length - digits, val.length);
-			} else if (val.length < digits) {
-				for (var i = 0; i < digits - val.length; i++) {
-					val = '0' + val;
-				}
+ var Numbers = {
+	toStringDigits : function(value, digits) {
+		var val = value.toString();
+		if (val.length > digits) {
+			val = val.slice(val.length - digits, val.length);
+		} else if (val.length < digits) {
+			var length = val.length;
+			for (var i = 0; i < digits - length; i++) {
+				val = '0' + val;
 			}
-			return val;
 		}
-	} else {
-		throw new Error("Cannot invoke Numbers as a function.");
+		return val;
 	}
 }
 /**
- * Logs messages on different priorities (information, warning, debugging, error).
+ * Console logging.
  */
 function Logger(name) {
 	if (this instanceof Logger) {
 		var debugEnabled = true;
-		var num = new Numbers();
 		var timestampEnabled;
 		function getTimeStamp() {
 			 var date = new Date();
-			 return date.getFullYear() + '-' + num.toStringDigits(date.getMonth(), 2) + '-' + num.toStringDigits(date.getDate(), 2) + ' ' + num.toStringDigits(date.getHours(), 2) + ':' + num.toStringDigits(date.getMinutes(), 2) + ':' + num.toStringDigits(date.getSeconds(), 2) + '.' + num.toStringDigits(date.getMilliseconds(), 3);
+			 with (Numbers) {
+				 return date.getFullYear() + '-' + toStringDigits(date.getMonth(), 2) + '-' + toStringDigits(date.getDate(), 2) + ' ' + toStringDigits(date.getHours(), 2) + ':' + toStringDigits(date.getMinutes(), 2) + ':' + toStringDigits(date.getSeconds(), 2) + '.' + toStringDigits(date.getMilliseconds(), 3);
+			 }
 		}
 		function infer(type, arguments) {
 			Array.prototype.unshift.call(arguments, (name? name + " " : "") + type + (timestampEnabled? " (" + getTimeStamp() + ")" : ""));
@@ -93,12 +91,19 @@ function AssertionError(message) {
 /**
  * Handles an assertion.
  */
-function AssertionHandler(init, success, fail) {
+function AssertionHandler(init, success, fail, crash) {
 	if (this instanceof AssertionHandler) {
 		this.init = function() {
 			init.apply(this, arguments);
 		};
 		this.handle = function(condition, message) {
+			if (condition instanceof Function) {
+				try {
+					condition = condition();
+				} catch (error) {
+					return crash.call(this, message, error);
+				}
+			}
 			condition? success.call(this, message) : fail.call(this, message);
 		}
 	} else {
@@ -114,11 +119,13 @@ function CLIHandler() {
 		var log;
 		this.constructor(function(name) {
 			log = new Logger(name);
-			log.enableTiming(true);
+			//log.enableTiming(true);
 		}, function(message) {
 			log.info("condition \"" + message + "\" PASSED");
 		}, function(message) {
 			log.warn("condition \"" + message + "\" NOT PASSED");
+		}, function(message, error) {
+			log.error("condition \"" + message + "\" FAILED (" + error.message + ").");
 		});
 	} else {
 		throw new Error("Cannot invoke CLIHandler as a function.");
@@ -132,14 +139,14 @@ function UIHandler() {
 	if (this instanceof UIHandler) {
 		var resultsList;
 		this.constructor(function(name) {
-			resultsList = document.getElementById("results");
+			resultsList = document.getElementById(name);
 	  		if (!resultsList) {
 	  			var title = document.createElement("span");
 	  			title.appendChild(document.createTextNode(name))
 	  			document.getElementsByTagName("body")[0].appendChild(title);
 			    resultsList = document.createElement("ul");
 			    document.getElementsByTagName("body")[0].appendChild(resultsList);
-			    resultsList.setAttribute("id","results");
+			    resultsList.setAttribute("id", name);
 	  		}
 		}, function(message) {
 			var li = document.createElement("li");
@@ -149,6 +156,11 @@ function UIHandler() {
 		}, function(message) {
 			var li = document.createElement("li");
 			li.style.color = "red";
+			li.appendChild(document.createTextNode(message));
+			resultsList.appendChild(li);
+		}, function(message) {
+			var li = document.createElement("li");
+			li.style.color = "orange";
 			li.appendChild(document.createTextNode(message));
 			resultsList.appendChild(li);
 		});
@@ -163,17 +175,9 @@ function Asserter(name) {
 	if (this instanceof Asserter) {
 		var handlers = [];
 		this.assert = function(message, condition) {
-			if (condition instanceof Function) {
-				try {
-					condition = condition();
-				} catch (error) {
-					throw new AssertionError((name? name + " " : "") + "ERROR condition \"" + message + "\" FAILED (" + error.message + ").");
-				}
-			}
 			for (var i = 0; i < handlers.length; i++) {
 				handlers[i].handle(condition, message);
 			}
-			return condition;
 		};
 		this.add = function(handler) {
 			if (handler instanceof AssertionHandler)  {
@@ -190,20 +194,29 @@ function Asserter(name) {
 /**
  * Testing code examples.
  */
-var test = new Asserter("Test on dummies :)");
+// dummy tests
+var dummies = new Asserter("Test on dummies :)");
 // add a console output
-test.add(new CLIHandler());
+dummies.add(new CLIHandler());
 // add a UI (HTML) output
-test.add(new UIHandler());
+dummies.add(new UIHandler());
 // a passing condition
-test.assert("true is equal to true", true === true);
+dummies.assert("true is equal to true", true === true);
 // a non-passing condition
-test.assert("true is equal to false", function() {
+dummies.assert("true is equal to false", function() {
 	return true === false
 });
 // a condition that raises an error while being evaluated
-test.assert("undefined array can push something", function() {
+dummies.assert("undefined array can push something", function() {
 	return undefined.push(0);
 });
+// test on Numbers utility
+var numbers = new Asserter("Test on Numbers");
+numbers.add(new CLIHandler());
+numbers.add(new UIHandler());
+numbers.assert("retrieving 1 in 2 digits results in 01", Numbers.toStringDigits(1, 2) === "01");
+numbers.assert("retrieving 30 in 3 digits results in 030", Numbers.toStringDigits(30, 3) === "030");
+numbers.assert("retrieving 0123456789 in 5 digits results in 56789", Numbers.toStringDigits(0123456789, 5) === "56789");
+numbers.assert("retrieving 123 in 3 digits results in 123", Numbers.toStringDigits(123, 3) === "123");
 </script>
 </html>
