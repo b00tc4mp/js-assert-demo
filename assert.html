@@ -1,5 +1,6 @@
 <html>
 <head>
+<title>assert</title>
 <link href='http://fonts.googleapis.com/css?family=Amatic+SC' rel='stylesheet' type='text/css'>
 <style type="text/css">
 * {
@@ -216,8 +217,8 @@ numbers.add(new CLIHandler());
 numbers.add(new UIHandler());
 with (Numbers) {
 	numbers.assert("retrieving 1 in 2 digits results in 01", toStringDigits(1, 2) === "01");
-	numbers.assert("retrieving 30 in 3 digits results in 030", toStringDigits(30, 3) === "030");
-	numbers.assert("retrieving 0123456789 in 5 digits results in 56789", toStringDigits(0123456789, 5) === "56789");
+	numbers.assert("retrieving 30 in 5 digits results in 00030", toStringDigits(30, 5) === "00030");
+	numbers.assert("retrieving 123456789 in 5 digits results in 56789", toStringDigits(123456789, 5) === "56789");
 	numbers.assert("retrieving 123 in 3 digits results in 123", toStringDigits(123, 3) === "123");
 }
 </script>
